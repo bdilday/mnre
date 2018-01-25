@@ -1,0 +1,14 @@
+Package: mnre
+Title: Multinomial Random Effects Models
+Version: 0.1
+Authors@R: person("Ben", "Dilday", email = "ben.dilday.phd@gmail.com", role = c("aut", "cre"))
+Description: Multinomial Random Effects Models
+Depends: R (>= 3.4.1)
+License: MIT
+Encoding: UTF-8
+LazyData: true
+Imports: Rcpp (>= 0.12.12)
+LinkingTo: Rcpp,
+  RcppArmadillo,
+  RcppEigen
+RoxygenNote: 6.0.1
