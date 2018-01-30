@@ -217,7 +217,11 @@ nd_min_fun <- function(ev) {
     for (v in mval) {
       s = sprintf("%s %.4e ", s, v)
     }
-    message(s)
+
+    if (ev$verbose > 0) {
+      message(s)      
+    }
+
     
     theta_mat <- matrix(mval, ncol=k_class)
     
@@ -229,7 +233,11 @@ nd_min_fun <- function(ev) {
     # beta_re <- matrix(rep(0, ncol(re) * k_class), ncol=k_class)
     # beta_fe <- matrix(rep(0, ncol(fe) * k_class), ncol=k_class)
     #
-    message("starting beta ", beta_fe[[1]], " ", beta_re[[1]])
+    
+    if (ev$verbose > 0) {
+      message("starting beta ", beta_fe[[1]], " ", beta_re[[1]])
+    }
+    
     zz <- mnre_fit_sparse(fe2, re, y, theta_mat, Lind, beta_fe, beta_re, verbose = ev$verbose)
     
     ev$beta_fe <<- zz$beta_fixed
