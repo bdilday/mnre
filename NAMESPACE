@@ -2,6 +2,7 @@
 
 export(mnre_dim_and_class_to_index)
 export(mnre_expand_matrix)
+export(mnre_fit)
 export(mnre_fit_sparse)
 export(mnre_make_covar)
 export(mnre_simulate_ev_data)
