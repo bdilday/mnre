@@ -208,10 +208,11 @@ nd_min_fun <- function(ev) {
                            data=ev$fr, family='binomial')
     fe <- fixed_effects <- (glf$X)
     re <- random_effects <- Matrix::t(glf$reTrms$Zt)
-    y <- matrix(ev$y, ncol=1)
+    
+    y <- matrix(ev$fr[,all.vars(ev$frm)[[1]]], ncol=1)
     k_class <- max(y)
     k <- max(y)
-    Lind = ev$Lind
+    Lind = glf$reTrms$Lind
     
     s = 'mval '
     for (v in mval) {
@@ -227,12 +228,16 @@ nd_min_fun <- function(ev) {
     
     fe2 <- Matrix::Matrix(fe, sparse = TRUE)
     
+    if (! "beta_re" %in% names(ev)) {
+      ev$beta_re <- matrix(rnorm(ncol(re) * k_class, 0, 0.2), ncol=k_class)
+    }
+
+    if (! "beta_fe" %in% names(ev)) {
+      ev$beta_fe <- matrix(rnorm(ncol(fe) * k_class, 0, 0.2), ncol=k_class)      
+    }    
+    
     beta_re <- ev$beta_re
     beta_fe <- ev$beta_fe
-    
-    # beta_re <- matrix(rep(0, ncol(re) * k_class), ncol=k_class)
-    # beta_fe <- matrix(rep(0, ncol(fe) * k_class), ncol=k_class)
-    #
     
     if (ev$verbose > 0) {
       message("starting beta ", beta_fe[[1]], " ", beta_re[[1]])
