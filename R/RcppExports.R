@@ -44,6 +44,7 @@ mnre_expand_matrix <- function(x1, k_class, direction) {
     .Call('_mnre_mnre_expand_matrix', PACKAGE = 'mnre', x1, k_class, direction)
 }
 
+#' @export
 mnre_left_covar_factor <- function(x1) {
     .Call('_mnre_mnre_left_covar_factor', PACKAGE = 'mnre', x1)
 }
@@ -60,10 +61,12 @@ mnre_fit_sparse <- function(fixed_effects, random_effects, y, theta_mat, Lind, b
     .Call('_mnre_mnre_fit_sparse', PACKAGE = 'mnre', fixed_effects, random_effects, y, theta_mat, Lind, beta_fixed, beta_random, verbose)
 }
 
+#' @export
 mnre_lk_penalty <- function(beta_random, theta_norm, Lind) {
     .Call('_mnre_mnre_lk_penalty', PACKAGE = 'mnre', beta_random, theta_norm, Lind)
 }
 
+#' @export
 mnre_lk_glm <- function(fixed_effects, random_effects, beta_fixed, beta_random, y, Lind) {
     .Call('_mnre_mnre_lk_glm', PACKAGE = 'mnre', fixed_effects, random_effects, beta_fixed, beta_random, y, Lind)
 }
@@ -80,6 +83,7 @@ mnre_mu_x <- function(fe_x, re_x, beta_fixed, beta_random) {
     .Call('_mnre_mnre_mu_x', PACKAGE = 'mnre', fe_x, re_x, beta_fixed, beta_random)
 }
 
+#' @export
 mnre_step_sparse <- function(fixed_effects, random_effects, y, beta_fixed, beta_random, lambda_norm, Lind) {
     .Call('_mnre_mnre_step_sparse', PACKAGE = 'mnre', fixed_effects, random_effects, y, beta_fixed, beta_random, lambda_norm, Lind)
 }
