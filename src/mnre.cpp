@@ -114,6 +114,7 @@ arma::sp_mat mnre_expand_matrix(const arma::sp_mat& x1, int k_class, int directi
   return expanded_mat;
 }
 
+//' @export
 // [[Rcpp::export]]
 arma::sp_mat mnre_left_covar_factor(arma::sp_mat& x1) {
   arma::sp_mat left_factor;
@@ -304,6 +305,7 @@ Rcpp::List mnre_fit_sparse(const arma::sp_mat& fixed_effects,
 } // end function
 
 
+//' @export
 // [[Rcpp::export]]
 double mnre_lk_penalty(const arma::mat& beta_random,
                            const arma::mat& theta_norm,
@@ -328,6 +330,7 @@ double mnre_lk_penalty(const arma::mat& beta_random,
 }
 
 
+//' @export
 // [[Rcpp::export]]
 double mnre_lk_glm(const arma::sp_mat& fixed_effects,
                        const arma::sp_mat& random_effects,
@@ -448,6 +451,7 @@ arma::mat mnre_mu_x(const arma::sp_mat &fe_x,
   return mu;
 }
 
+//' @export
 // [[Rcpp::export]]
 Rcpp::List mnre_step_sparse(const arma::sp_mat &fixed_effects,
                                 const arma::sp_mat &random_effects,

@@ -203,6 +203,9 @@ nd_min_fun <- function(ev) {
     ev$verbose <- 1
   }
   
+  # make sure the data is a data frame, not a tibble
+  ev$fr <- as.data.frame(ev$fr)
+  
   function(mval) {
     glf <- lme4::glFormula(ev$frm,
                            data=ev$fr, family='binomial')
