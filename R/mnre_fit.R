@@ -7,7 +7,7 @@ mnre_fit <- function(frm, data, verbose=0, off_diagonal=0.0) {
   ev$verbose <- verbose
   
   nlev <- length(all.vars(ev$frm))
-  mval <- rep(1,  (nlev-1) * max(ev$fr$y))   
+  mval <- rep(1,  (nlev-1) * max(ev$fr[[all.vars(frm)[1]]]))   
 
   nf <- nd_min_fun(ev)
   
@@ -54,7 +54,7 @@ mnre_fit_to_df <- function(frm, data, mval, verbose=0, off_diagonal=0.0) {
   df_names <- c(df_names, "ranef_level")
   
   cc1$ranef <- ranef_labels[cc1[,ncol(cc1)]]
-  cc1$lv <- matrix(lvs, ncol=1)
+  cc1$lv <- as.vector(matrix(lvs, ncol=1))
   
   mvalX <- t(sapply(1:max(Lind), function(i) {
     idx = which(cc1[,k_class+1] == i)

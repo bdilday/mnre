@@ -47,15 +47,15 @@ mnre_simulate_ev_data <- function(nlim=1000, year=2016, OBP=FALSE) {
 
   dfX$y <- dfX$outcome
 
-   glf <- lme4::glFormula(y ~ (1|BAT_ID) + (1|PIT_ID) + (1|HOME_TEAM_ID),
+   glf <- lme4::glFormula(y ~ (1|bat_id) + (1|pit_id) + (1|home_team_id),
                           data=dfX, family='binomial')
-  #glf <- lme4::glFormula(y ~ (1|PIT_ID) + (1|BAT_ID),
+  #glf <- lme4::glFormula(y ~ (1|pit_id) + (1|bat_id),
    #                      data=dfX, family='binomial')
 
-  dfX <- dfX %>% dplyr::mutate(pid=as.integer(as.factor(PIT_ID)))
-  dfX <- dfX %>% dplyr::mutate(bid=as.integer(as.factor(BAT_ID)))
+  dfX <- dfX %>% dplyr::mutate(pid=as.integer(as.factor(pit_id)))
+  dfX <- dfX %>% dplyr::mutate(bid=as.integer(as.factor(bat_id)))
 
-  dfX <- dfX %>% dplyr::mutate(sid=as.integer(as.factor(HOME_TEAM_ID)))
+  dfX <- dfX %>% dplyr::mutate(sid=as.integer(as.factor(home_team_id)))
   dfX <- dfX %>% dplyr::mutate(bid = bid+max(pid))
   dfX <- dfX %>% dplyr::mutate(sid = sid+max(bid))
 
@@ -64,8 +64,8 @@ mnre_simulate_ev_data <- function(nlim=1000, year=2016, OBP=FALSE) {
   k_class <- max(dfX$y)
   beta_re <- matrix(rep(0, k_class * dim(re)[[2]]), ncol=k_class)
   beta_fe <- matrix(rep(0, k_class * dim(fe)[[2]]), ncol=k_class)
-  xx <- model.matrix(y ~ BAT_ID + PIT_ID + HOME_TEAM_ID, data=dfX)
-#  xx <- model.matrix(y ~ BAT_ID + PIT_ID, data=dfX)
+  xx <- model.matrix(y ~ bat_id + pit_id + home_team_id, data=dfX)
+#  xx <- model.matrix(y ~ bat_id + pit_id, data=dfX)
   y <- matrix(dfX$y, ncol=1)
   theta_init <- matrix(rep(glf$reTrms$theta, k_class), ncol=k_class)
   list(fr=dfX, frm=glf$formula,
@@ -256,4 +256,63 @@ nd_min_fun <- function(ev) {
   }
 }
   
+#' @importFrom magrittr %>%
+#' @importFrom magrittr %$%
+#' @importFrom magrittr %<>%
+#'
+#' @export
+mnre_example_retrosheet_event_data <- function(obp=FALSE) {
+  ev <- readRDS(system.file("extdata/events2017.rds", package = "mnre"))
   
+  # rm pitchers as hitters
+  ev %<>% filter(bat_fld_cd != 1)
+  
+  # anyone with less than 20 PA hitting is generic
+  lowpa_batters <- ev %>% 
+    dplyr::group_by(bat_id) %>% 
+    dplyr::summarise(PA=n()) %>% 
+    dplyr::filter(PA<=20) %$% bat_id
+  
+  # anyone with less than 20 PA hitting is generic
+  lowpa_pitchers <- ev %>% 
+    group_by(pit_id) %>% 
+    summarise(PA=n()) %>% 
+    filter(PA<=20) %$% pit_id
+  
+  if (length(lowpa_batters) > 0) {
+    cc <- which(ev$bat_id %in% lowpa_batters)
+    ev[cc,]$bat_id <- "xxxxb001"
+  }
+  
+  if (length(lowpa_pitchers) > 0) {
+    cc <- which(ev$pit_id %in% lowpa_pitchers)
+    ev[cc,]$pit_id <- "xxxxp001"
+  }
+  
+  cc_hr <- which(ev$event_cd == 23)
+  cc_so <- which(ev$event_cd == 3)
+  cc_bip0 <- which(ev$event_cd == 2)
+  cc_bip1 <- which(ev$event_cd == 20)
+  cc_bip2 <- which(ev$event_cd >= 21 & ev$event_cd <= 22)
+  cc_bb <- which(ev$event_cd >= 14 & ev$event_cd <= 16)
+  
+  ev$outcome <- NA
+  
+  if (obp) {
+    ev[c(cc_bip0, cc_so),]$outcome <- 0
+    ev[c(cc_bip1, cc_bip2, cc_hr, cc_bb),]$outcome <- 1
+  } else {
+    ev[cc_bip0,]$outcome <- 0
+    ev[cc_bip1,]$outcome <- 1
+    ev[cc_bip2,]$outcome <- 2
+    ev[cc_hr,]$outcome <- 3
+    ev[cc_so,]$outcome <- 4
+    ev[cc_bb,]$outcome <- 5
+  }
+  
+  ev %<>% select(game_id, event_id, event_cd, bat_id, pit_id, home_team_id, outcome)
+  
+  ev
+}
+
+
