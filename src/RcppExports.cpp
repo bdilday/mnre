@@ -179,6 +179,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mnre_create
+SEXP mnre_create(const arma::sp_mat fixed_effects, const arma::sp_mat random_effects, const arma::vec& y, const arma::mat& theta_norm, const arma::uvec& Lind, arma::mat beta_fixed, arma::mat beta_random, int verbose);
+RcppExport SEXP _mnre_mnre_create(SEXP fixed_effectsSEXP, SEXP random_effectsSEXP, SEXP ySEXP, SEXP theta_normSEXP, SEXP LindSEXP, SEXP beta_fixedSEXP, SEXP beta_randomSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::sp_mat >::type fixed_effects(fixed_effectsSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat >::type random_effects(random_effectsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type theta_norm(theta_normSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type Lind(LindSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type beta_fixed(beta_fixedSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type beta_random(beta_randomSEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(mnre_create(fixed_effects, random_effects, y, theta_norm, Lind, beta_fixed, beta_random, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_mnre_mnre_dim_and_class_to_index", (DL_FUNC) &_mnre_mnre_dim_and_class_to_index, 3},
@@ -193,6 +211,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mnre_mnre_mu_x", (DL_FUNC) &_mnre_mnre_mu_x, 4},
     {"_mnre_mnre_step_sparse", (DL_FUNC) &_mnre_mnre_step_sparse, 7},
     {"_mnre_fill_mtwm_x", (DL_FUNC) &_mnre_fill_mtwm_x, 3},
+    {"_mnre_mnre_create", (DL_FUNC) &_mnre_mnre_create, 8},
     {NULL, NULL, 0}
 };
 

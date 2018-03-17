@@ -9,6 +9,7 @@
 #ifndef mnre_H
 #define mnre_H
 
+
 using Eigen::ArrayXd;
 using Eigen::LLT;
 using Eigen::MatrixXd;
@@ -19,15 +20,6 @@ using Eigen::SparseQR;
 
 using namespace Rcpp;
 using namespace Eigen;
-
-class mnre {
-  int K_class;
-  arma::sp_mat fixed_effects;
-  arma::sp_mat random_effects;
-  arma::mat y;
-  arma::mat theta_mat;
-
-};
 
 arma::sp_mat fill_mtwm_x(const arma::sp_mat& x1, const arma::sp_mat& x2,
                          const arma::mat& mu);
@@ -41,13 +33,6 @@ Rcpp::List mnre_fit_sparse(const arma::sp_mat& fixed_effects,
                                arma::mat beta_random,
                                int verbose);
 
-Rcpp::List mnre_step_sparse(const arma::sp_mat &fixed_effects,
-                                const arma::sp_mat &random_effects,
-                                const arma::vec &y,
-                                const arma::mat &beta_fixed,
-                                const arma::mat &beta_random,
-                                const arma::mat &lambda_norm,
-                                const arma::uvec &Lind);
 
 double mnre_lk_glm(const arma::sp_mat& fixed_effects,
                        const arma::sp_mat& random_effects,
@@ -75,5 +60,20 @@ arma::mat mnre_mu(const arma::mat &fixed_effects,
                       const arma::mat &beta_random);
 
 arma::sp_mat mnre_expand_matrix(const arma::sp_mat& x1, int k_class, int directions);
+
+arma::sp_mat mnre_left_covar_factor(arma::sp_mat& x1);
+
+arma::sp_mat mnre_make_covar(const arma::mat& theta_mat,
+                             const arma::umat& Lind,
+                             double off_diagonal);
+
+Rcpp::List mnre_step_sparse(const arma::sp_mat &fixed_effects,
+                            const arma::sp_mat &random_effects,
+                            const arma::vec &y,
+                            const arma::mat &beta_fixed,
+                            const arma::mat &beta_random,
+                            const arma::mat &lambda_norm,
+                            const arma::uvec &Lind);
+
 
 #endif

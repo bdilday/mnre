@@ -92,3 +92,8 @@ fill_mtwm_x <- function(x1, x2, mu) {
     .Call('_mnre_fill_mtwm_x', PACKAGE = 'mnre', x1, x2, mu)
 }
 
+#' @export
+mnre_create <- function(fixed_effects, random_effects, y, theta_norm, Lind, beta_fixed, beta_random, verbose) {
+    .Call('_mnre_mnre_create', PACKAGE = 'mnre', fixed_effects, random_effects, y, theta_norm, Lind, beta_fixed, beta_random, verbose)
+}
+
