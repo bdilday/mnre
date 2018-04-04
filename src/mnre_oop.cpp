@@ -2,10 +2,11 @@
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 #include "mnre.h"
-#include "mnre_oop.h"
+#include "mnre_types.h"
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(RcppEigen)]]
+
 
 using namespace arma;
 
@@ -13,9 +14,23 @@ using namespace arma;
 #define EXPAND_ROW 0
 #define EXPAND_COLUMN 1
 
+void MNRE::mnre_echo(NumericVector &x) {
+  for (int i=0; i < x.size(); i++) {
+    Rcpp::Rcout << i << " " << x[i] << " " << std::endl;
+  }
+}
+
+void MNRE::set_theta(arma::mat &theta_norm) {
+  fungible_theta = theta_norm;
+  Rcpp::Rcout << " hey " << fungible_theta(0) << std::endl;
+//Rcpp::Rcout << " hey " << theta_norm(0) << std::endl;
+//  Rcpp::Rcout << " hey " << std::endl;
+}
+
+
 //' @export
 // [[Rcpp::export]]
-mnre::mnre(const arma::sp_mat fixed_effects,
+MNRE::MNRE(const arma::sp_mat fixed_effects,
            const arma::sp_mat random_effects,
            const arma::vec& y,
            const arma::mat& theta_norm,
@@ -34,16 +49,26 @@ mnre::mnre(const arma::sp_mat fixed_effects,
 
 //' @export
 // [[Rcpp::export]]
-mnre::mnre() {
+MNRE::MNRE() {
   Rcpp::Rcout << "I am mnre!" << std::endl;
 };
 
+
 // //' @export
 // // [[Rcpp::export]]
-// SEXP mnre_create() {
-//   mnre *m = new mnre();
-//   return wrap(XPtr<mnre>(m, true));
+// void MNRE::mnre_echo(NumericVector &x) {
+//   for (int i=0; i < x.size(); i++) {
+//     Rcpp::Rcout << i << " " << x[i] << " " << std::endl;
+//   }
 // }
+
+
+//' @export
+// [[Rcpp::export]]
+SEXP mnre_create_empty() {
+  MNRE *m = new MNRE();
+  return wrap(XPtr<MNRE>(m, true));
+}
 
 //' @export
 // [[Rcpp::export]]
@@ -55,7 +80,7 @@ SEXP mnre_create(const arma::sp_mat fixed_effects,
                  arma::mat beta_fixed,
                  arma::mat beta_random,
                  int verbose) {
-  mnre *m = new mnre(fixed_effects,
+  MNRE *m = new MNRE(fixed_effects,
                      random_effects,
                      y,
                      theta_norm,
@@ -63,10 +88,10 @@ SEXP mnre_create(const arma::sp_mat fixed_effects,
                      beta_fixed,
                      beta_random,
                     verbose);
-  return wrap(XPtr<mnre>(m, true));
+  return wrap(XPtr<MNRE>(m, true));
 }
 
-Rcpp::List mnre::mnre_fit_sparse(const arma::sp_mat& fixed_effects,
+Rcpp::List MNRE::mnre_fit_sparse(const arma::sp_mat& fixed_effects,
                            const arma::sp_mat& random_effects,
                            const arma::vec& y,
                            const arma::mat& theta_mat,
@@ -232,3 +257,15 @@ Rcpp::List mnre::mnre_fit_sparse(const arma::sp_mat& fixed_effects,
   } // steps
   
 } // end function
+
+
+//' @export
+// [[Rcpp::export]]
+RCPP_MODULE(mnre_mod) {
+  using namespace Rcpp;
+  class_<MNRE>("MNRE")
+    .constructor()
+    .method("mnre_echo", &MNRE::mnre_echo)
+    .method("set_theta", &MNRE::set_theta)
+    ;
+}
