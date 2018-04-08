@@ -205,17 +205,19 @@ nd_min_fun <- function(ev) {
   
   # make sure the data is a data frame, not a tibble
   ev$fr <- as.data.frame(ev$fr)
+
+  glf <- lme4::glFormula(ev$frm,
+                         data=ev$fr, family='binomial')
+  fe <- fixed_effects <- (glf$X)
+  re <- random_effects <- Matrix::t(glf$reTrms$Zt)
+  
+  y <- matrix(ev$fr[,all.vars(ev$frm)[[1]]], ncol=1)
+  k_class <- max(y)
+  k <- max(y)
+  Lind = glf$reTrms$Lind
+  fe2 <- Matrix::Matrix(fe, sparse = TRUE)
   
   function(mval) {
-    glf <- lme4::glFormula(ev$frm,
-                           data=ev$fr, family='binomial')
-    fe <- fixed_effects <- (glf$X)
-    re <- random_effects <- Matrix::t(glf$reTrms$Zt)
-    
-    y <- matrix(ev$fr[,all.vars(ev$frm)[[1]]], ncol=1)
-    k_class <- max(y)
-    k <- max(y)
-    Lind = glf$reTrms$Lind
     
     s = 'mval '
     for (v in mval) {
@@ -228,8 +230,6 @@ nd_min_fun <- function(ev) {
 
     
     theta_mat <- matrix(mval, ncol=k_class)
-    
-    fe2 <- Matrix::Matrix(fe, sparse = TRUE)
     
     if (! "beta_re" %in% names(ev)) {
       ev$beta_re <- matrix(rnorm(ncol(re) * k_class, 0, 0.2), ncol=k_class)
