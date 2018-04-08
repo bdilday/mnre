@@ -206,6 +206,7 @@ nd_min_fun <- function(ev) {
   # make sure the data is a data frame, not a tibble
   ev$fr <- as.data.frame(ev$fr)
   
+  
   function(mval) {
     glf <- lme4::glFormula(ev$frm,
                            data=ev$fr, family='binomial')
@@ -255,7 +256,82 @@ nd_min_fun <- function(ev) {
     
   }
 }
+
+
+#' @export
+nd_min_oop_fun <- function(ev) {
   
+  frm <- ev$frm
+  if ("off_diagonal" %in% names(ev)) {
+    ev$off_diagonal <- ev$off_diagonal
+  } else {
+    ev$off_diagonal <- 0.0
+  }
+  
+  if (!"verbose" %in% names(ev)) {
+    ev$verbose <- 1
+  }
+  
+  # make sure the data is a data frame, not a tibble
+  ev$fr <- as.data.frame(ev$fr)
+  
+  mnre_module = Module("mnre_mod", PACKAGE = "mnre", mustStart = TRUE)
+  
+  
+  glf <- lme4::glFormula(ev$frm,
+                         data=ev$fr, family='binomial')
+  fe <- fixed_effects <- (glf$X)
+  re <- random_effects <- Matrix::t(glf$reTrms$Zt)
+  fe2 <- Matrix::Matrix(fe, sparse = TRUE)
+  
+  y <- matrix(ev$fr[,all.vars(ev$frm)[[1]]], ncol=1)
+  k_class <- max(y)
+  k <- max(y)
+  Lind = glf$reTrms$Lind
+
+  if (! "beta_re" %in% names(ev)) {
+    ev$beta_re <- matrix(rnorm(ncol(re) * k_class, 0, 0.2), ncol=k_class)
+  }
+  
+  if (! "beta_fe" %in% names(ev)) {
+    ev$beta_fe <- matrix(rnorm(ncol(fe) * k_class, 0, 0.2), ncol=k_class)      
+  }    
+  
+  mnre_ptr = new(mnre_module$MNRE, fe2, re)
+  
+  function(mval) {
+    
+    s = 'mval '
+    for (v in mval) {
+      s = sprintf("%s %.4e ", s, v)
+    }
+    
+    if (ev$verbose > 0) {
+      message(s)      
+    }
+    
+    theta_mat <- matrix(mval, ncol=k_class)
+    
+    mnre_ptr$set_theta(theta_mat)
+    
+    beta_re <- ev$beta_re
+    beta_fe <- ev$beta_fe
+    
+    if (ev$verbose > 0) {
+      message("starting beta ", beta_fe[[1]], " ", beta_re[[1]])
+    }
+    
+    zz <- mnre_ptr$mnre_fit_sparse(fe2, re, y, theta_mat, Lind, beta_fe, beta_re, verbose = ev$verbose)
+    
+    ev$beta_fe <<- zz$beta_fixed
+    ev$beta_re <<- zz$beta_random
+    
+    zz$loglk + zz$loglk_det
+    
+  }
+}
+
+
 #' @importFrom magrittr %>%
 #' @importFrom magrittr %$%
 #' @importFrom magrittr %<>%

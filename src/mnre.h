@@ -67,6 +67,7 @@ arma::sp_mat mnre_make_covar(const arma::mat& theta_mat,
                              const arma::umat& Lind,
                              double off_diagonal);
 
+
 Rcpp::List mnre_step_sparse(const arma::sp_mat &fixed_effects,
                             const arma::sp_mat &random_effects,
                             const arma::vec &y,
@@ -74,6 +75,5 @@ Rcpp::List mnre_step_sparse(const arma::sp_mat &fixed_effects,
                             const arma::mat &beta_random,
                             const arma::mat &lambda_norm,
                             const arma::uvec &Lind);
-
 
 #endif

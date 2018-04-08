@@ -98,7 +98,7 @@ mnre_create_empty <- function() {
 }
 
 #' @export
-mnre_create <- function(fixed_effects, random_effects, y, theta_norm, Lind, beta_fixed, beta_random, verbose) {
-    .Call('_mnre_mnre_create', PACKAGE = 'mnre', fixed_effects, random_effects, y, theta_norm, Lind, beta_fixed, beta_random, verbose)
+mnre_create <- function(fixed_effects, random_effects, y, theta_norm, Lind) {
+    .Call('_mnre_mnre_create', PACKAGE = 'mnre', fixed_effects, random_effects, y, theta_norm, Lind)
 }
 
