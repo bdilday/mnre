@@ -11,7 +11,7 @@
 
 using namespace arma;
 
-#define DEBUG 0
+#define DEBUG 1
 #define EXPAND_ROW 0
 #define EXPAND_COLUMN 1
 
@@ -24,13 +24,26 @@ void MNRE::mnre_echo(NumericVector &x) {
 
 //' @export
 // [[Rcpp::export]]
-MNRE::MNRE(const arma::sp_mat fixed_effects,
-           const arma::sp_mat random_effects
+MNRE::MNRE(const arma::sp_mat& fixed_effects,
+           const arma::sp_mat& random_effects
              ): 
   fixed_effects (fixed_effects),
   random_effects (random_effects)
   {
   Rcpp::Rcout << "I am mnre!" << std::endl;
+};
+
+//' @export
+// [[Rcpp::export]]
+MNRE::MNRE(const arma::sp_mat& fixed_effects,
+           const arma::sp_mat& random_effects,
+           int verbose_
+): 
+  fixed_effects (fixed_effects),
+  random_effects (random_effects)
+{
+  Rcpp::Rcout << "I am mnre!" << std::endl;
+  verbose = verbose_;
 };
 
 //' @export
@@ -67,7 +80,48 @@ SEXP mnre_create(const arma::sp_mat fixed_effects,
   return wrap(XPtr<MNRE>(m, true));
 }
 
-arma::sp_mat MNRE::mnre_left_covar_factor(arma::sp_mat& x1) {
+arma::mat MNRE::mnre_mu_x_oop(const arma::sp_mat &fe_x,
+                              const arma::sp_mat &re_x,
+                              const arma::mat &beta_fixed,
+                              const arma::mat &beta_random) {
+  
+  // int n_data = fe_x.n_rows;
+  // int k_class = beta_fixed.n_cols;
+  
+  int ndim_fe = fe_x.n_cols / k_class;
+  int ndim_re = re_x.n_cols / k_class;
+  
+  arma::sp_mat fixed_effects(n_data, ndim_fe);
+  arma::sp_mat random_effects(n_data, ndim_re);
+  
+  arma::mat mu(n_data, k_class);
+  arma::mat eta(n_data, k_class);
+  arma::mat ee(n_data, k_class);
+  
+  arma::vec denom(n_data);
+  
+  for (int k=0; k < k_class; k++) {
+    fixed_effects = fe_x.submat(0, ndim_fe * k, n_data-1, ndim_fe * (k+1) - 1);
+    random_effects = re_x.submat(0, ndim_re * k, n_data-1, ndim_re * (k+1) - 1);
+    eta.col(k) = fixed_effects * beta_fixed.col(k) + random_effects * beta_random.col(k);
+    ee.col(k) = exp(eta.col(k));
+  }
+  
+  for (int i=0; i< n_data; i++) {
+    denom(i) = 1.0;
+    for (int k=0; k < k_class; k++) {
+      denom(i) += ee(i, k);
+    }
+    
+    for (int k=0; k < k_class; k++) {
+      mu(i, k) = ee(i, k)/denom(i);
+    }
+  }
+  
+  return mu;
+}
+
+arma::sp_mat MNRE::mnre_left_covar_factor_oop(arma::sp_mat& x1) {
   arma::sp_mat left_factor;
   
   SimplicialLLT<SparseMatrix <double> > solver;
@@ -120,9 +174,9 @@ Rcpp::List MNRE::mnre_oop_fit() {
   double lk_diff_stat, loglk_old, lk_new, beta_diff;
   int max_step = 200;
   
-  arma::sp_mat covar_mat = mnre_make_covar(0.0);
+  arma::sp_mat covar_mat = mnre_make_covar_oop(0.0);
   arma::mat mu;
-  arma::sp_mat left_factor = mnre_left_covar_factor(covar_mat);
+  arma::sp_mat left_factor = mnre_left_covar_factor_oop(covar_mat);
   
   arma::sp_mat re_x = mnre_oop_expand_matrix(random_effects, k_class, EXPAND_COLUMN);
   arma::sp_mat fe_x = mnre_oop_expand_matrix(fixed_effects, k_class, EXPAND_COLUMN);
@@ -149,7 +203,7 @@ Rcpp::List MNRE::mnre_oop_fit() {
       Rcpp:Rcout << " istep " << istep << std::endl;
     }
     
-    mu = mnre_mu_x(fe_x, ZLam, beta_fixed, beta_random);
+    mu = mnre_mu_x_oop(fe_x, ZLam, mnre_beta_fixed, mnre_beta_random);
     
     if (DEBUG) {
       Rcpp::Rcout << " call step... " << std::endl;
@@ -176,12 +230,9 @@ Rcpp::List MNRE::mnre_oop_fit() {
       while( (step_counter < half_steps) && ( lk_diff_stat >= 0 ) ) {
         newton_step_factor = 0.5 * newton_step_factor;
         lk_new =
-          mnre_lk(fe_x, ZLam,
-                  beta_fixed +
-                    newton_step_factor * as<arma::mat>(ll["beta_fixed_diff"]),
-                    beta_random +
-                      newton_step_factor * as<arma::mat>(ll["beta_random_diff"]),
-                      y, lambda_ones, Lind);
+          mnre_lk_oop(mnre_beta_fixed + newton_step_factor * as<arma::mat>(ll["beta_fixed_diff"]),
+                      mnre_beta_random + newton_step_factor * as<arma::mat>(ll["beta_random_diff"]),
+                      y);
         lk_diff_stat = lk_new - loglk_old;
         step_counter += 1;
         
@@ -196,7 +247,7 @@ Rcpp::List MNRE::mnre_oop_fit() {
     
     Rcpp::List ans;
     if (lk_diff_stat >= 0) { // fit got worse
-      rtwr = fill_mtwm_x(ZLam, ZLam, mu);
+      rtwr = fill_mtwm_x_oop(ZLam, ZLam, mu);
       rtwr = rtwr + sp_diag_mat;
       
       // TODO: either use the left factor or use rtwr
@@ -212,20 +263,20 @@ Rcpp::List MNRE::mnre_oop_fit() {
         Rcpp::Rcout << "half step cycle did not find a better fit" << std::endl;
       }
       
-      ans["beta_fixed"] = beta_fixed;
-      ans["beta_random"] = beta_random;
+      ans["beta_fixed"] = mnre_beta_fixed;
+      ans["beta_random"] = mnre_beta_random;
       ans["loglk"] = (double)(ll["loglk"]);
       ans["loglk_det"] = loglk_det;
       
       return ans;
     } else {
-      beta_fixed = beta_fixed + newton_step_factor * as<arma::mat>(ll["beta_fixed_diff"]);
-      beta_random = beta_random + newton_step_factor * as<arma::mat>(ll["beta_random_diff"]);
+      mnre_beta_fixed = mnre_beta_fixed + newton_step_factor * as<arma::mat>(ll["beta_fixed_diff"]);
+      mnre_beta_random = mnre_beta_random + newton_step_factor * as<arma::mat>(ll["beta_random_diff"]);
       newton_step_factor = 1.0;
     }
     
     if (std::abs(lk_diff_stat) <= tol && (double)ll["grad_check"] <= grad_tol) {
-      rtwr = fill_mtwm_x(ZLam, ZLam, mu);
+      rtwr = fill_mtwm_x_oop(ZLam, ZLam, mu);
       rtwr = rtwr + sp_diag_mat;
       // TODO: either use the left factor or use rtwr
       rx = Rcpp::as<SparseMatrix <double> >(wrap(rtwr));
@@ -235,8 +286,8 @@ Rcpp::List MNRE::mnre_oop_fit() {
       arma::log_det(loglk_det_val, loglk_det_sign, arma::mat(rtwr));
       loglk_det = loglk_det_val * loglk_det_sign;
       
-      ans["beta_fixed"] = beta_fixed;
-      ans["beta_random"] = beta_random;
+      ans["beta_fixed"] = mnre_beta_fixed;
+      ans["beta_random"] = mnre_beta_random;
       ans["loglk"] = (double)(ll["loglk"]);
       ans["loglk_det"] = loglk_det;
       return ans;
@@ -249,13 +300,74 @@ Rcpp::List MNRE::mnre_oop_fit() {
 
 void MNRE::set_dims() {
   n_data = y.n_elem;  
-  n_dim_fixed = beta_fixed.n_rows;
-  n_dim_random = beta_random.n_rows;
+  n_dim_fixed = mnre_beta_fixed.n_rows;
+  n_dim_random = mnre_beta_random.n_rows;
   n_dim = n_dim_fixed + n_dim_random;
   D_times_K = n_dim * k_class;
   Dfixed_times_K = n_dim_fixed * k_class;
   Drandom_times_K = n_dim_random  * k_class;
 }
+
+arma::sp_mat MNRE::fill_mtwm_x_oop(const arma::sp_mat& x1, const arma::sp_mat& x2,
+                             const arma::mat& mu) {
+  
+  int Kclass = mu.n_cols;
+  
+  int D1 = x1.n_cols / Kclass;
+  int D2 = x2.n_cols / Kclass;
+  
+  int D1_times_K = D1 * Kclass;
+  int D2_times_K = D2 * Kclass;
+  arma::sp_mat mtwm(D1_times_K, D2_times_K);
+  arma::vec ww;
+  int idx1, idx2;
+  double aa;
+  arma::sp_mat tmp_mat;
+  int idx11, idx12, idx21, idx22;
+  arma::sp_mat ww_sp;
+  int tmp;
+  
+  arma::mat ww_con1(x1.n_rows, D1);
+  arma::mat ww_con2(x2.n_rows, D2);
+  ww_con1.fill(1);
+  ww_con2.fill(1);
+  arma::mat ww_mat(mu.n_rows, Kclass);
+  
+  for (int k1=0; k1 < Kclass; k1++) {
+    for (int k2=0; k2 < Kclass; k2++) {
+      
+      if (k1 == k2) {
+        ww =  mu.col(k1) % (1-mu.col(k1));
+      } else {
+        ww = mu.col(k1) % mu.col(k2);
+      }
+      ww = arma::sqrt(ww);
+      for (int i=0; i<ww_con1.n_cols; i++) {
+        ww_con1.col(i) = ww;
+      }
+      for (int i=0; i<ww_con2.n_cols; i++) {
+        ww_con2.col(i) = ww;
+      }
+      
+      idx11 = (k1)*D1 ;
+      idx12 = idx11 + D1 - 1;
+      idx21 = (k2)*D2 ;
+      idx22 = idx21 + D2 - 1;
+      
+      if (k1 == k2) {
+        tmp_mat = (x1.cols(idx11, idx12) % ww_con1).t() * (x2.cols(idx21, idx22) % ww_con2);
+      } else {
+        tmp_mat = -(x1.cols(idx11, idx12) % ww_con1).t() * (x2.cols(idx21, idx22) % ww_con2);
+      }
+      
+      mtwm( arma::span(idx11, idx12), arma::span(idx21, idx22) ) = tmp_mat;
+      
+    }
+  }
+  
+  return mtwm;
+}
+
 
 Rcpp::List MNRE::mnre_step_oop() {
   // The left factor of the covariance should already be applied to the random effects
@@ -266,16 +378,17 @@ Rcpp::List MNRE::mnre_step_oop() {
   
   int log_counter = 0;
 
-  arma::mat mu = mnre_mu_x(fixed_effects, random_effects, beta_fixed, beta_random);
+  arma::mat mu = mnre_mu_x_oop(fixed_effects, random_effects, 
+                               mnre_beta_fixed, mnre_beta_random);
   
   arma::mat dy(n_data, k_class);
   
   arma::sp_mat sp_diag_mat = speye(n_dim_random * k_class, n_dim_random * k_class);
   int idx1, idx2;
   
-  arma::sp_mat ftwf = fill_mtwm_x(fixed_effects, fixed_effects, mu);
-  arma::sp_mat ftwr = fill_mtwm_x(fixed_effects, random_effects, mu);
-  arma::sp_mat rtwr = fill_mtwm_x(random_effects, random_effects, mu);
+  arma::sp_mat ftwf = fill_mtwm_x_oop(fixed_effects, fixed_effects, mu);
+  arma::sp_mat ftwr = fill_mtwm_x_oop(fixed_effects, random_effects, mu);
+  arma::sp_mat rtwr = fill_mtwm_x_oop(random_effects, random_effects, mu);
   
   if (DEBUG) {
     Rcpp::Rcout << " mnre step " <<
@@ -331,7 +444,7 @@ Rcpp::List MNRE::mnre_step_oop() {
   // for the penalty term. Note this assumes spherical random effects
   for (int d1=0; d1 < n_dim_random; d1++) {
     for (int k1=0; k1 < k_class; k1++) {
-      rhs_re(d1, k1) -= beta_random(d1, k1);
+      rhs_re(d1, k1) -= mnre_beta_random(d1, k1);
     }
   }
   
@@ -362,13 +475,14 @@ Rcpp::List MNRE::mnre_step_oop() {
   // note this means the pattern of zeros in the sparse matrix cannot change. 
   // I think this will be the case if we only update the random effects covariance matrix (theta_mat)
   // but need to be aware of this
-  //  mnre_solver.compute(rx);
+    mnre_solver.compute(rx);
   
-  if (!MATRIX_ANALYZED) {
-    set_solver_analyze(rx);
-  }
-
-  mnre_solver.factorize(rx);
+  // if (!MATRIX_ANALYZED) {
+  //   set_solver_analyze(rx);
+  // }
+  // 
+  // mnre_solver.factorize(rx);
+  // 
   MatrixXd vsol = mnre_solver.solve(ry);
   
   //arma::vec vsol = spsolve(lhs_mat, rhs_mat, "lapack");
@@ -383,36 +497,32 @@ Rcpp::List MNRE::mnre_step_oop() {
     n_dim_random, k_class
   );
   
-  double loglk_old = mnre_lk(fixed_effects, random_effects,
-                             beta_fixed, beta_random,
-                             y, lambda_ones, Lind);
+  double loglk_old = mnre_lk_oop(mnre_beta_fixed, mnre_beta_random, y);
+  double loglk = mnre_lk_oop(mnre_beta_fixed + db, mnre_beta_random + du, y);
   
-  double loglk = mnre_lk(fixed_effects, random_effects,
-                         beta_fixed + db, beta_random + du,
-                         y, lambda_ones, Lind);
   
   if (DEBUG) {
     Rcpp::Rcout << " mnre step " <<
-      " beta_fixed " << beta_fixed.n_rows << " " << beta_fixed.n_cols <<
-        " beta_random " << beta_random.n_rows << " " << beta_random.n_cols <<
+      " beta_fixed " << mnre_beta_fixed.n_rows << " " << mnre_beta_fixed.n_cols <<
+        " beta_random " << mnre_beta_random.n_rows << " " << mnre_beta_random.n_cols <<
           " db " << db.n_rows << " " << db.n_cols <<
             " du " << du.n_rows << " " << du.n_cols <<
               std::endl;
   }
   
-  arma::mat beta_mat_old = arma::join_vert(beta_fixed, beta_random);
-  arma::mat beta_mat = arma::join_vert(beta_fixed+db, beta_random+du);
+  arma::mat beta_mat_old = arma::join_vert(mnre_beta_fixed, mnre_beta_random);
+  arma::mat beta_mat = arma::join_vert(mnre_beta_fixed+db, mnre_beta_random+du);
   Rcpp::List ans;
   ans["loglk"] = loglk;
   ans["loglk_old"] = loglk_old;
   ans["beta_diff"] = db;
   ans["beta_mat_old"] = beta_mat_old;
   ans["beta_mat"] = beta_mat;
-  ans["beta_fixed_old"] = beta_fixed;
-  ans["beta_fixed"] = beta_fixed + db;
+  ans["beta_fixed_old"] = mnre_beta_fixed;
+  ans["beta_fixed"] = mnre_beta_fixed + db;
   ans["beta_fixed_diff"] = db;
-  ans["beta_random_old"] = beta_random;
-  ans["beta_random"] = beta_random + du;
+  ans["beta_random_old"] = mnre_beta_random;
+  ans["beta_random"] = mnre_beta_random + du;
   ans["beta_random_diff"] = du;
   ans["grad_check"] = grad_check;
   
@@ -428,7 +538,7 @@ int MNRE::mnre_dim_and_class_to_index(int i_dim, int i_class, int n_dim) {
   return i_class * n_dim + i_dim;
 }
 
-arma::sp_mat MNRE::mnre_make_covar(double off_diagonal = 0.0) {
+arma::sp_mat MNRE::mnre_make_covar_oop(double off_diagonal = 0.0) {
   
   int nr = Lind.n_rows;
   int nc = theta_mat.n_cols;
@@ -469,6 +579,71 @@ arma::sp_mat MNRE::mnre_make_covar(double off_diagonal = 0.0) {
   return covar_mat;
 }
 
+double MNRE::mnre_lk_oop(const arma::mat& beta_fixed, 
+                         const arma::mat& beta_random, 
+                         const arma::vec& y) {
+  //return 1.0;
+
+  return mnre_lk_glm_oop(beta_fixed, beta_random, y) + mnre_lk_penalty_oop(beta_random, theta_mat);
+}
+
+double MNRE::mnre_lk_penalty_oop(const arma::mat& beta_random,
+                       const arma::mat& theta_norm) {
+  // note that when we work in spherical random effects the theta_norm term is identically 1
+  // I'm leaving it here for now to potentially refactor later on and use this as a generic penalty
+  // function.
+  //return 1.0;
+  
+  int k_class = theta_norm.n_cols;
+  double tmp;
+  double lk_penalty = 0.0;
+  int ind;
+
+  for (int k1 = 0; k1 < k_class; k1++) {
+    tmp = 0.0;
+    for (int d1 = 0; d1 < beta_random.n_rows; d1++) { // dont penalize the intercept
+      ind = Lind(d1)-1;
+      // note we multiply by 1, not theta_mat, because it is assuemd we are in spherical coordinates.
+      //      tmp += beta_random(d1, k1) * beta_random(d1, k1) * theta_norm(ind, k1);
+      tmp += beta_random(d1, k1) * beta_random(d1, k1);
+    }
+    lk_penalty += tmp;
+  }
+
+  return lk_penalty;
+  
+}
+
+
+double MNRE::mnre_lk_glm_oop(const arma::mat& beta_fixed,
+                             const arma::mat& beta_random,
+                             const arma::vec& y) {
+  
+  int n_data  = fixed_effects.n_rows;
+  int n_dim_fixed   = fixed_effects.n_cols;
+  int n_dim_random  = random_effects.n_cols;
+  int k_class =  beta_fixed.n_cols;
+  
+  arma::mat mu = mnre_mu_x_oop(fixed_effects, random_effects,
+                           beta_fixed, beta_random);
+  
+  double log_lk = 0.0, lk_term;
+  int iy;
+  
+  for (int i=0; i < n_data; i++) {
+    iy = (int) y(i);
+    if (iy == 0) {
+      lk_term = std::log(1 - arma::sum(mu.row(i)));
+    } else {
+      lk_term = std::log(mu(i,iy-1));
+    }
+    log_lk = log_lk + lk_term;
+  }
+  
+  return -2 * log_lk;
+}
+
+
 //' @export
 // [[Rcpp::export]]
 RCPP_MODULE(mnre_mod) {
@@ -477,6 +652,7 @@ RCPP_MODULE(mnre_mod) {
     .constructor()
     .constructor<int>()
     .constructor<arma::sp_mat, arma::sp_mat>()
+    .constructor<arma::sp_mat, arma::sp_mat, int>()
   
   .method("mnre_echo", &MNRE::mnre_echo)
 
@@ -499,6 +675,14 @@ RCPP_MODULE(mnre_mod) {
 
   // fit methods
 .method("mnre_oop_fit", &MNRE::mnre_oop_fit)
-
-  ;
+.method("mnre_lk_glm_oop", &MNRE::mnre_lk_glm_oop)
+.method("mnre_lk_penalty_oop", &MNRE::mnre_lk_penalty_oop)
+.method("mnre_lk_oop", &MNRE::mnre_lk_oop)
+.method("mnre_step_oop", &MNRE::mnre_step_oop)
+  
+  // checks
+.method("mnre_make_covar_oop", &MNRE::mnre_make_covar_oop)
+.method("mnre_mu_x_oop", &MNRE::mnre_mu_x_oop)
+.method("mnre_left_covar_factor_oop", &MNRE::mnre_left_covar_factor_oop)
+    ;
 }
