@@ -2,6 +2,7 @@
 #ifndef mnre_types_H
 #define mnre_types_H
 
+#include <gperftools/profiler.h>
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 
@@ -29,6 +30,9 @@ private:
   arma::mat mnre_beta_fixed;
   arma::mat mnre_beta_random;
   arma::sp_mat mnre_covar_mat;
+  arma::sp_mat mnre_ZLam;
+  arma::sp_mat mnre_fe_x;
+  arma::sp_mat mnre_re_x;
   SimplicialLLT<SparseMatrix <double> > mnre_solver;
   
   int n_data;
@@ -131,14 +135,18 @@ public:
   arma::sp_mat fill_mtwm_x_oop(const arma::sp_mat& x1, const arma::sp_mat& x2,
                            const arma::mat& mu);
   
-  double mnre_lk_oop(const arma::mat& beta_fixed,
+  double mnre_lk_oop(const arma::sp_mat& fe_, 
+                     const arma::sp_mat& re_,
+                     const arma::mat& beta_fixed,
                      const arma::mat& beta_random, 
                      const arma::vec& y);
   
   double mnre_lk_penalty_oop(const arma::mat& beta_random,
                              const arma::mat& theta_norm);
   
-  double mnre_lk_glm_oop(const arma::mat& beta_fixed,
+  double mnre_lk_glm_oop(const arma::sp_mat& fe_, 
+                         const arma::sp_mat& re_,
+                         const arma::mat& beta_fixed,
                          const arma::mat& beta_random,
                          const arma::vec& y);
   
