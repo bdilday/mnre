@@ -155,15 +155,15 @@ arma::sp_mat MNRE::mnre_oop_expand_matrix(const arma::sp_mat& x1, int k_class, i
 
 Rcpp::List MNRE::mnre_oop_fit() {
 
-  ProfilerStart("./mnre_prof.log");
-  
+  ProfilerStart("./mnre_fill.log");
+
   arma::mat lambda_ones(theta_mat.n_rows, theta_mat.n_cols);
   lambda_ones.fill(1);
   
   SimplicialLLT<SparseMatrix <double> > mtwm_solver;
     
   int step_counter;
-  double tol = 1e-5;
+  double tol = 1e-10;
   double grad_tol = 1e-5;
   
   double loglk_det;
@@ -298,6 +298,7 @@ Rcpp::List MNRE::mnre_oop_fit() {
     
   } // steps
   
+
   ProfilerStop();
 } // end function
 
@@ -312,16 +313,25 @@ void MNRE::set_dims() {
   Drandom_times_K = n_dim_random  * k_class;
 }
 
-arma::sp_mat MNRE::fill_mtwm_x_oop(const arma::sp_mat& x1, const arma::sp_mat& x2,
-                             const arma::mat& mu) {
+//' @export
+// [[Rcpp::export]]
+void update_in_place_test(arma::mat& x1) {
+  for (int i=0; i < x1.n_rows; i++) {
+    for (int j=0; j < x1.n_cols; j++) {
+      x1(i, j) *= 2;
+    }  
+  }
+}
+
+arma::sp_mat MNRE::fill_mtwm_x_oop(const arma::sp_mat& x1, 
+                                   const arma::sp_mat& x2, 
+                                   const arma::mat& mu) {
   
-  int Kclass = mu.n_cols;
+  int D1 = x1.n_cols / k_class;
+  int D2 = x2.n_cols / k_class;
   
-  int D1 = x1.n_cols / Kclass;
-  int D2 = x2.n_cols / Kclass;
-  
-  int D1_times_K = D1 * Kclass;
-  int D2_times_K = D2 * Kclass;
+  int D1_times_K = D1 * k_class;
+  int D2_times_K = D2 * k_class;
   arma::sp_mat mtwm(D1_times_K, D2_times_K);
   arma::vec ww;
   int idx1, idx2;
@@ -335,16 +345,20 @@ arma::sp_mat MNRE::fill_mtwm_x_oop(const arma::sp_mat& x1, const arma::sp_mat& x
   arma::mat ww_con2(x2.n_rows, D2);
   ww_con1.fill(1);
   ww_con2.fill(1);
-  arma::mat ww_mat(mu.n_rows, Kclass);
+
+  // TODO: n_rows can be big and this doesnt change with D
+  // consider refactor by making it an object attribute
+  arma::mat ww_mat(mu.n_rows, k_class);
   
-  for (int k1=0; k1 < Kclass; k1++) {
-    for (int k2=0; k2 < Kclass; k2++) {
+  for (int k1=0; k1 < k_class; k1++) {
+    for (int k2=0; k2 < k_class; k2++) {
       
       if (k1 == k2) {
         ww =  mu.col(k1) % (1-mu.col(k1));
       } else {
         ww = mu.col(k1) % mu.col(k2);
       }
+
       ww = arma::sqrt(ww);
       for (int i=0; i<ww_con1.n_cols; i++) {
         ww_con1.col(i) = ww;
@@ -370,6 +384,7 @@ arma::sp_mat MNRE::fill_mtwm_x_oop(const arma::sp_mat& x1, const arma::sp_mat& x
   }
   
   return mtwm;
+  
 }
 
 
@@ -676,8 +691,11 @@ RCPP_MODULE(mnre_mod) {
   .method("get_beta", &MNRE::get_beta)
   .method("get_theta", &MNRE::get_theta)
   .method("get_y", &MNRE::get_y)
-  
   .method("get_matrix_analyze_status", &MNRE::get_matrix_analyze_status)
+  
+  // get computed quantities
+  .method("get_mu", &MNRE::get_mu)
+  .method("get_ZLam", &MNRE::get_ZLam)
   
   // fit methods
   .method("mnre_oop_fit", &MNRE::mnre_oop_fit)
@@ -690,5 +708,8 @@ RCPP_MODULE(mnre_mod) {
   .method("mnre_make_covar_oop", &MNRE::mnre_make_covar_oop)
   .method("mnre_mu_x_oop", &MNRE::mnre_mu_x_oop)
   .method("mnre_left_covar_factor_oop", &MNRE::mnre_left_covar_factor_oop)
+  .method("fill_mtwm_x_oop", &MNRE::fill_mtwm_x_oop)
+  .method("mnre_mu_x_oop", &MNRE::mnre_mu_x_oop)
+    
     ;
 }

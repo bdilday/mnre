@@ -102,3 +102,8 @@ mnre_create <- function(fixed_effects, random_effects, y, theta_norm, Lind) {
     .Call('_mnre_mnre_create', PACKAGE = 'mnre', fixed_effects, random_effects, y, theta_norm, Lind)
 }
 
+#' @export
+update_in_place_test <- function(x1) {
+    invisible(.Call('_mnre_update_in_place_test', PACKAGE = 'mnre', x1))
+}
+

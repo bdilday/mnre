@@ -205,6 +205,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// update_in_place_test
+void update_in_place_test(arma::mat& x1);
+RcppExport SEXP _mnre_update_in_place_test(SEXP x1SEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat& >::type x1(x1SEXP);
+    update_in_place_test(x1);
+    return R_NilValue;
+END_RCPP
+}
 
 RcppExport SEXP _rcpp_module_boot_mnre_mod();
 
@@ -223,6 +233,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mnre_fill_mtwm_x", (DL_FUNC) &_mnre_fill_mtwm_x, 3},
     {"_mnre_mnre_create_empty", (DL_FUNC) &_mnre_mnre_create_empty, 0},
     {"_mnre_mnre_create", (DL_FUNC) &_mnre_mnre_create, 5},
+    {"_mnre_update_in_place_test", (DL_FUNC) &_mnre_update_in_place_test, 1},
     {"_rcpp_module_boot_mnre_mod", (DL_FUNC) &_rcpp_module_boot_mnre_mod, 0},
     {NULL, NULL, 0}
 };

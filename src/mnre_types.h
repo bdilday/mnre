@@ -29,6 +29,7 @@ private:
   arma::uvec Lind;
   arma::mat mnre_beta_fixed;
   arma::mat mnre_beta_random;
+  arma::mat mnre_mu;
   arma::sp_mat mnre_covar_mat;
   arma::sp_mat mnre_ZLam;
   arma::sp_mat mnre_fe_x;
@@ -111,6 +112,13 @@ public:
     return mnre_covar_mat;  
   }
   
+  arma::mat get_mu() {
+    return mnre_mu;
+  };
+  
+  arma::sp_mat get_ZLam() {
+    return mnre_ZLam;
+  };
   
   arma::sp_mat mnre_oop_expand_matrix(const arma::sp_mat& x1, int k_class, int direction);
   

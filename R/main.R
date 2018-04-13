@@ -341,7 +341,7 @@ mnre_example_retrosheet_event_data <- function(obp=FALSE) {
   ev <- readRDS(system.file("extdata/events2017.rds", package = "mnre"))
   
   # rm pitchers as hitters
-  ev %<>% filter(bat_fld_cd != 1)
+  ev %<>% dplyr::filter(bat_fld_cd != 1)
   
   # anyone with less than 20 PA hitting is generic
   lowpa_batters <- ev %>% 
@@ -351,9 +351,9 @@ mnre_example_retrosheet_event_data <- function(obp=FALSE) {
   
   # anyone with less than 20 PA hitting is generic
   lowpa_pitchers <- ev %>% 
-    group_by(pit_id) %>% 
-    summarise(PA=n()) %>% 
-    filter(PA<=20) %$% pit_id
+    dplyr::group_by(pit_id) %>% 
+    dplyr::summarise(PA=n()) %>% 
+    dplyr::filter(PA<=20) %$% pit_id
   
   if (length(lowpa_batters) > 0) {
     cc <- which(ev$bat_id %in% lowpa_batters)
@@ -386,7 +386,7 @@ mnre_example_retrosheet_event_data <- function(obp=FALSE) {
     ev[cc_bb,]$outcome <- 5
   }
   
-  ev %<>% select(game_id, event_id, event_cd, bat_id, pit_id, home_team_id, outcome)
+  ev %<>% dplyr::select(game_id, event_id, event_cd, bat_id, pit_id, home_team_id, outcome)
   
   ev
 }
