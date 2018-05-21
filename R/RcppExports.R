@@ -92,3 +92,18 @@ fill_mtwm_x <- function(x1, x2, mu) {
     .Call('_mnre_fill_mtwm_x', PACKAGE = 'mnre', x1, x2, mu)
 }
 
+#' @export
+mnre_create_empty <- function() {
+    .Call('_mnre_mnre_create_empty', PACKAGE = 'mnre')
+}
+
+#' @export
+mnre_create <- function(fixed_effects, random_effects, y, theta_norm, Lind) {
+    .Call('_mnre_mnre_create', PACKAGE = 'mnre', fixed_effects, random_effects, y, theta_norm, Lind)
+}
+
+#' @export
+update_in_place_test <- function(x1) {
+    invisible(.Call('_mnre_update_in_place_test', PACKAGE = 'mnre', x1))
+}
+

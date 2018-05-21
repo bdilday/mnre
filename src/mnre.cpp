@@ -1,5 +1,4 @@
 
-
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 #include "mnre.h"
