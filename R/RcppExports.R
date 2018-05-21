@@ -92,6 +92,10 @@ fill_mtwm_x <- function(x1, x2, mu) {
     .Call('_mnre_fill_mtwm_x', PACKAGE = 'mnre', x1, x2, mu)
 }
 
+parallelVectorSum <- function(x) {
+    .Call('_mnre_parallelVectorSum', PACKAGE = 'mnre', x)
+}
+
 #' @export
 mnre_create_empty <- function() {
     .Call('_mnre_mnre_create_empty', PACKAGE = 'mnre')

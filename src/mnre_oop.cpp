@@ -1,15 +1,19 @@
 
+#include <RcppParallel.h>
 #include <RcppArmadillo.h>
 #include <RcppEigen.h>
 #include "mnre.h"
 #include "mnre_types.h"
 
+// [[Rcpp::depends(RcppParallel)]]
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(RcppEigen)]]
 // [[Rcpp::plugins(cpp11)]]
 
 
 using namespace arma;
+using namespace RcppParallel;
+
 
 #define DEBUG 0
 #define EXPAND_ROW 0
@@ -21,6 +25,43 @@ void MNRE::mnre_echo(NumericVector &x) {
   }
 }
 
+
+struct Sum : public Worker
+{   
+  // source vector
+  const RVector<double> input;
+  
+  // accumulated value
+  double value;
+  
+  // constructors
+  Sum(const NumericVector input) : input(input), value(0) {}
+  Sum(const Sum& sum, Split) : input(sum.input), value(0) {}
+  
+  // accumulate just the element of the range I've been asked to
+  void operator()(std::size_t begin, std::size_t end) {
+    value += std::accumulate(input.begin() + begin, input.begin() + end, 0.0);
+  }
+  
+  // join my value with that of another Sum
+  void join(const Sum& rhs) { 
+    value += rhs.value; 
+  }
+};
+
+
+// [[Rcpp::export]]
+double parallelVectorSum(NumericVector x) {
+  
+  // declare the SumBody instance 
+  Sum sum(x);
+  
+  // call parallel_reduce to start the work
+  parallelReduce(0, x.length(), sum);
+  
+  // return the computed sum
+  return sum.value;
+}
 
 //' @export
 // [[Rcpp::export]]
@@ -332,7 +373,9 @@ arma::sp_mat MNRE::fill_mtwm_x_oop(const arma::sp_mat& x1,
   
   int D1_times_K = D1 * k_class;
   int D2_times_K = D2 * k_class;
+  
   arma::sp_mat mtwm(D1_times_K, D2_times_K);
+
   arma::vec ww;
   int idx1, idx2;
   double aa;
@@ -387,6 +430,72 @@ arma::sp_mat MNRE::fill_mtwm_x_oop(const arma::sp_mat& x1,
   
 }
 
+
+arma::sp_mat MNRE::fill_mtwm_x_oop_test(const arma::sp_mat& x1, 
+                                        const arma::sp_mat& x2, 
+                                        const arma::mat& mu) {
+  
+  int D1 = x1.n_cols / k_class;
+  int D2 = x2.n_cols / k_class;
+  
+  int D1_times_K = D1 * k_class;
+  int D2_times_K = D2 * k_class;
+  
+  arma::sp_mat mtwm(D1_times_K, D2_times_K);
+  
+  arma::vec ww;
+  int idx1, idx2;
+  double aa;
+  arma::sp_mat tmp_mat;
+  int idx11, idx12, idx21, idx22;
+  arma::sp_mat ww_sp;
+  int tmp;
+  
+  arma::mat ww_con1(x1.n_rows, D1);
+  arma::mat ww_con2(x2.n_rows, D2);
+  ww_con1.fill(1);
+  ww_con2.fill(1);
+  
+  // TODO: n_rows can be big and this doesnt change with D
+  // consider refactor by making it an object attribute
+  arma::mat ww_mat(mu.n_rows, k_class);
+  
+  for (int k1=0; k1 < k_class; k1++) {
+    for (int k2=0; k2 < k_class; k2++) {
+      
+      if (k1 == k2) {
+        ww =  mu.col(k1) % (1-mu.col(k1));
+      } else {
+        ww = mu.col(k1) % mu.col(k2);
+      }
+      
+      ww = arma::sqrt(ww);
+      for (int i=0; i<ww_con1.n_cols; i++) {
+        ww_con1.col(i) = ww;
+      }
+      for (int i=0; i<ww_con2.n_cols; i++) {
+        ww_con2.col(i) = ww;
+      }
+      
+      idx11 = (k1)*D1 ;
+      idx12 = idx11 + D1 - 1;
+      idx21 = (k2)*D2 ;
+      idx22 = idx21 + D2 - 1;
+      
+      if (k1 == k2) {
+        tmp_mat = (x1.cols(idx11, idx12) % ww_con1).t() * (x2.cols(idx21, idx22) % ww_con2);
+      } else {
+        tmp_mat = -(x1.cols(idx11, idx12) % ww_con1).t() * (x2.cols(idx21, idx22) % ww_con2);
+      }
+      
+      mtwm( arma::span(idx11, idx12), arma::span(idx21, idx22) ) = tmp_mat;
+      
+    }
+  }
+  
+  return mtwm;
+  
+}
 
 Rcpp::List MNRE::mnre_step_oop() {
   // The left factor of the covariance should already be applied to the random effects

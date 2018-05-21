@@ -7,8 +7,10 @@ Depends: R (>= 3.4.1)
 License: MIT
 Encoding: UTF-8
 LazyData: true
-Imports: Rcpp (>= 0.12.12)
+Imports: Rcpp (>= 0.12.12),
+    RcppParallel
 LinkingTo: Rcpp,
   RcppArmadillo,
-  RcppEigen
+  RcppEigen,
+  RcppParallel
 RoxygenNote: 6.0.1

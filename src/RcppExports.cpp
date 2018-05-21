@@ -180,6 +180,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// parallelVectorSum
+double parallelVectorSum(NumericVector x);
+RcppExport SEXP _mnre_parallelVectorSum(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(parallelVectorSum(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 // mnre_create_empty
 SEXP mnre_create_empty();
 RcppExport SEXP _mnre_mnre_create_empty() {
@@ -231,6 +242,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mnre_mnre_mu_x", (DL_FUNC) &_mnre_mnre_mu_x, 4},
     {"_mnre_mnre_step_sparse", (DL_FUNC) &_mnre_mnre_step_sparse, 7},
     {"_mnre_fill_mtwm_x", (DL_FUNC) &_mnre_fill_mtwm_x, 3},
+    {"_mnre_parallelVectorSum", (DL_FUNC) &_mnre_parallelVectorSum, 1},
     {"_mnre_mnre_create_empty", (DL_FUNC) &_mnre_mnre_create_empty, 0},
     {"_mnre_mnre_create", (DL_FUNC) &_mnre_mnre_create, 5},
     {"_mnre_update_in_place_test", (DL_FUNC) &_mnre_update_in_place_test, 1},
